@@ -10,7 +10,7 @@ export const loginUser = async (req, res) => {
 
     if (req.body.password == user.password) {
       res.status(200).json({
-        message: 'Login Success',
+        message: 'Login Successfully',
       });
     } else {
       res.status(400).json({
@@ -39,7 +39,7 @@ export const registerUser = async (req, res) => {
     });
     await user.save();
     res.status(200).json({
-      message: 'Registered Success',
+      message: 'Registered Successfully.',
     });
   } catch (error) {
     res.status(500).json({ message: 'Something went Wrong!' });
@@ -56,7 +56,7 @@ export const loginAdmin = async (req, res) => {
 
     if (req.body.password == admin.password) {
       res.status(200).json({
-        message: 'Login Success',
+        message: 'Login Successfully',
       });
     } else {
       res.status(400).json({
