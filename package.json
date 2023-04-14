@@ -10,6 +10,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@dqbd/tiktoken": "^1.0.6",
     "@pinecone-database/pinecone": "^0.0.10",
     "body-parser": "^1.20.2",
     "config": "^3.3.9",

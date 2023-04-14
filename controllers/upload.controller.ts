@@ -4,9 +4,9 @@ import { OpenAIEmbeddings } from 'langchain/embeddings';
 import { PineconeStore } from 'langchain/vectorstores';
 import { DEFAULT_SYSTEM_PROMPT } from '../config/constant';
 import dotenv from 'dotenv';
-
 import { CustomPDFLoader } from '../utils/customPDFLoader';
 import { makeChain } from '../utils/makechain';
+import { summarizeChain } from '../utils/summarizeChain';
 dotenv.config();
 
 const basePath = 'uploads/';
@@ -36,7 +36,7 @@ export const train = async (req, res) => {
     const rawDocs = await loader.load();
 
     const textSplitter = new RecursiveCharacterTextSplitter({
-      chunkSize: 1000,
+      chunkSize: 4000,
       chunkOverlap: 200,
     });
 
@@ -49,10 +49,10 @@ export const train = async (req, res) => {
 
     const pineconeIndex = pinecone.Index(process.env.PINECONE_INDEX_NAME);
 
-    await pineconeIndex.delete1({
-      deleteAll: true,
-      namespace: process.env.PINECONE_NAME_SPACE ?? '',
-    });
+    // await pineconeIndex.delete1({
+    //   deleteAll: true,
+    //   namespace: process.env.PINECONE_NAME_SPACE ?? '',
+    // });
 
     const chunkSize = 50;
 
@@ -61,21 +61,19 @@ export const train = async (req, res) => {
       console.log('chunk', i, chunk);
       await PineconeStore.fromDocuments(docs, embeddings, {
         pineconeIndex: pineconeIndex,
-        namespace: process.env.PINECONE_NAME_SPACE,
+        namespace: req.body.email,
       });
       console.log(Math.ceil((100 * i) / docs.length));
     }
-    res.send('File Embedding Successfully');
+    res.send('File Embedding Success');
   } catch (error) {
     console.log('error', error);
-    res.status(500);
-    res.send(error);
+    res.status(500).send(error);
   }
 };
 
 export const chatMessage = async (req, res) => {
   try {
-    console.log('MEssage = ', req.body.value);
     const pinecone = new PineconeClient();
 
     await pinecone.init({
@@ -91,7 +89,7 @@ export const chatMessage = async (req, res) => {
       {
         pineconeIndex: index,
         textKey: 'text',
-        namespace: process.env.PINECONE_NAME_SPACE,
+        namespace: req.body.email,
       }
     );
 
@@ -101,6 +99,18 @@ export const chatMessage = async (req, res) => {
       question: req.body.value,
       chat_history: [],
     });
-    res.status(200).send(result);
+    console.log('result= ', result);
+    res.status(200).json(result);
   } catch (error) {}
+};
+
+export const summarize = async (req, res) => {
+  try {
+    console.log('Summarize = ', req.body.email);
+    const result = await summarizeChain(req.body.email);
+    console.log('Result = ', result);
+    res.status(200).send(result);
+  } catch (error) {
+    console.log('Summarize Error = ', error);
+  }
 };
