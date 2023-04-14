@@ -23,7 +23,10 @@ export const summarizeChain = async (email) => {
       namespace: email,
     }
   );
+<<<<<<< Updated upstream
 
+=======
+>>>>>>> Stashed changes
   const model = new OpenAI({ temperature: 0 });
   const textSplitter = new RecursiveCharacterTextSplitter({ chunkSize: 1000 });
   const docs = await textSplitter.createDocuments([]);

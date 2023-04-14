@@ -15,7 +15,7 @@ Standalone question:`);
 const QA_PROMPT = PromptTemplate.fromTemplate(
   `You are an AI assistant providing helpful advice. You are given the following extracted parts of a long document and a question. Provide a conversational answer based on the context provided.
 You should only provide hyperlinks that reference the context below. Do NOT make up hyperlinks.
-If you can't find the answer in the context below, just say "Hmm, I'm not sure." Don't try to make up an answer.
+If you can't find the answer in the context below, just say "I am sorry, I am not sure what you mean by {question}" Provide more information Don't try to make up an answer.
 
 Question: {question}
 =========
