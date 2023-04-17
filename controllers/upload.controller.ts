@@ -7,7 +7,7 @@ import { summarizeChain } from '../utils/summarizeChain';
 import dotenv from 'dotenv';
 import { CustomPDFLoader } from '../utils/customPDFLoader';
 import { makeChain } from '../utils/makechain';
-import { summarizeChain } from '../utils/summarizeChain';
+import Prompt from '../models/prompt.model';
 dotenv.config();
 
 const basePath = 'uploads/';
@@ -32,7 +32,6 @@ export const train = async (req, res) => {
       apiKey: process.env.PINECONE_API_KEY ?? '',
     });
 
-    console.log('!!!!!!! = ', basePath + req.body.filename);
     const loader = new CustomPDFLoader(basePath + req.body.filename);
     const rawDocs = await loader.load();
 
@@ -113,5 +112,27 @@ export const summarize = async (req, res) => {
     res.status(200).send(result);
   } catch (error) {
     console.log('Summarize Error = ', error);
+  }
+};
+
+export const customizePrompt = async (req, res) => {
+  try {
+    const prompt = await Prompt.find();
+    console.log('Database = ', prompt);
+    if (prompt.length === 0) {
+      const createPrompt = await Prompt.create({
+        prompt: req.body.value,
+      });
+      await createPrompt.save();
+    } else {
+      prompt[0].prompt = req.body.value;
+      await prompt[0].save();
+    }
+    res
+      .status(200)
+      .send({ data: req.body.value, message: 'Prompt Change Success' });
+  } catch (error) {
+    console.log('Prompt error = ', error);
+    res.status(404).send({ message: 'Something Went Wrong' });
   }
 };
