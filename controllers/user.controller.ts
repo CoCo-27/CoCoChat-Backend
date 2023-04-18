@@ -27,9 +27,7 @@ export const registerUser = async (req, res) => {
   try {
     const alreadyUser = await User.findOne({ email: req.body.email });
     if (alreadyUser) {
-      return res
-        .status(400)
-        .json({ message: `Email ${req.body.email} Already Exist!` });
+      return res.status(400).json({ message: 'Email already Exist!' });
     }
     const user = await User.create({
       first_name: req.body.first_name,
@@ -73,9 +71,7 @@ export const registerAdmin = async (req, res) => {
   try {
     const alreadyUser = await Admin.findOne({ email: req.body.email });
     if (alreadyUser) {
-      return res
-        .status(400)
-        .json({ message: `Email ${req.body.email} Already Exist!` });
+      return res.status(400).json({ message: `Email already Exist!` });
     }
     const admin = await Admin.create({
       first_name: req.body.first_name,

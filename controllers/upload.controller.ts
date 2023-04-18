@@ -16,6 +16,7 @@ export const uploadFile = async (req, res) => {
   try {
     res.status(200).send(req.file);
   } catch (error) {
+    console.log('error = ', error);
     res.status(404).json({ error });
   }
 };
@@ -107,11 +108,12 @@ export const chatMessage = async (req, res) => {
 export const summarize = async (req, res) => {
   try {
     console.log('Summarize = ', req.body.email);
-    const result = await summarizeChain(req.body.email);
+    const result = await summarizeChain(req.body.email, req.body.prompt);
     console.log('Result = ', result);
     res.status(200).send(result);
   } catch (error) {
-    console.log('Summarize Error = ', error);
+    console.log('Summarize Error = ', error[0]);
+    res.status(404).send({ error: error });
   }
 };
 
@@ -131,6 +133,19 @@ export const customizePrompt = async (req, res) => {
     res
       .status(200)
       .send({ data: req.body.value, message: 'Prompt Change Success' });
+  } catch (error) {
+    console.log('Prompt error = ', error);
+    res.status(404).send({ message: 'Something Went Wrong' });
+  }
+};
+
+export const getPrompt = async (req, res) => {
+  try {
+    const prompt = await Prompt.find();
+    console.log('Database = ', prompt);
+    res
+      .status(200)
+      .send({ data: prompt[0].prompt, message: 'Prompt Change Success' });
   } catch (error) {
     console.log('Prompt error = ', error);
     res.status(404).send({ message: 'Something Went Wrong' });

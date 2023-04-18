@@ -5,8 +5,8 @@ import { CustomPDFLoader } from './customPDFLoader';
 
 const basePath = 'uploads/';
 
-export const summarizeChain = async (email) => {
-  const prompt = 'promt'
+export const summarizeChain = async (email, prompt) => {
+  console.log('chain = ', prompt);
   const loader = new CustomPDFLoader(basePath + email);
   const rawDocs = await loader.load();
   const textSplitter = new RecursiveCharacterTextSplitter({
@@ -15,12 +15,11 @@ export const summarizeChain = async (email) => {
   });
 
   const docs = await textSplitter.splitDocuments(rawDocs);
-  console.log('Docs = ', docs);
 
   const model = new OpenAI({ temperature: 0 });
 
   // This convenience function creates a document chain prompted to summarize a set of documents.
-  const chain = loadSummarizationChain(model);
+  const chain = loadSummarizationChain(model, { prompt: prompt });
   const res = await chain.call({
     input_documents: docs,
   });
