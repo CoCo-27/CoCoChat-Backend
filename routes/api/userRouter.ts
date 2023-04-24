@@ -3,6 +3,8 @@ import {
   loginAdmin,
   registerUser,
   registerAdmin,
+  forgotPassword,
+  resetPassword,
 } from '../../controllers/user.controller';
 import express from 'express';
 const router = express.Router();
@@ -18,6 +20,11 @@ router.post('/login', loginUser);
 
 // Register User
 router.post('/register', registerUser);
+
+//forgot password
+router.post('/forgotPassword', forgotPassword);
+
+router.post('/resetPassword', resetPassword);
 
 // Delete a User with id
 // router.delete('/:id', controller.deleteUserById);

@@ -1,3 +1,4 @@
+import multer from 'multer';
 import {
   uploadFile,
   train,
@@ -6,12 +7,22 @@ import {
   customizePrompt,
   getPrompt,
 } from '../../controllers/upload.controller';
-import uploadMiddleware from '../../middleware/upload';
 import express from 'express';
 const router = express.Router();
 
+const storage = multer.diskStorage({
+  destination: (req, file, callBack) => {
+    callBack(null, 'uploads');
+  },
+  filename: (req, file, callBack) => {
+    callBack(null, Date.now() + file.originalname);
+  },
+});
+
+const uploadStorage = multer({ storage: storage });
+
 // Login User
-router.post('/file', uploadMiddleware.upload, uploadFile);
+router.post('/file', uploadStorage.single('file'), uploadFile);
 
 router.post('/train', train);
 

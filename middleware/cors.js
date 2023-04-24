@@ -1,6 +1,5 @@
 module.exports = {
   allowAll: (req, res, next) => {
-    console.log('osidjfosdjfosjifosdjf');
     res.header('Access-Control-Allow-Origin', '*');
     res.header(
       'Access-Control-Allow-Headers',

@@ -5,9 +5,8 @@ import { CustomPDFLoader } from './customPDFLoader';
 
 const basePath = 'uploads/';
 
-export const summarizeChain = async (email, prompt) => {
-  console.log('chain = ', prompt);
-  const loader = new CustomPDFLoader(basePath + email);
+export const summarizeChain = async (email, prompt, filename) => {
+  const loader = new CustomPDFLoader(basePath + filename);
   const rawDocs = await loader.load();
   const textSplitter = new RecursiveCharacterTextSplitter({
     chunkSize: 4000,
@@ -22,6 +21,7 @@ export const summarizeChain = async (email, prompt) => {
   const chain = loadSummarizationChain(model, { prompt: prompt });
   const res = await chain.call({
     input_documents: docs,
+    question: prompt,
   });
   return res;
 };

@@ -7,6 +7,7 @@ const adminSchema = new mongoose.Schema({
   email: String,
   password: String,
   type: String,
+  reset_password_token: String,
 });
 
 const Admin = mongoose.model('Admin', adminSchema);

@@ -5,17 +5,14 @@ const storage = multer.diskStorage({
     callBack(null, 'uploads');
   },
   filename: (req, file, callBack) => {
-    // const extensionName = file.originalname
-    //   .split('.')
-    //   .filter(Boolean)
-    //   .slice(1)
-    //   .join('.');
     callBack(null, Date.now() + file.originalname);
   },
 });
 
-let upload = multer({ storage: storage }).single('file');
+let uploadStorage = multer({
+  storage: storage,
+});
 
 module.exports = {
-  upload,
+  uploadStorage,
 };

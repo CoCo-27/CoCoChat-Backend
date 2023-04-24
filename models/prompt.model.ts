@@ -5,6 +5,6 @@ const promptSchema = new mongoose.Schema({
   prompt: String,
 });
 
-const Admin = mongoose.model('Prompt', promptSchema);
+const Prompt = mongoose.model('Prompt', promptSchema);
 
-export default Admin;
+export default Prompt;

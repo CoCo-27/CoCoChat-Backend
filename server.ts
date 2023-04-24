@@ -3,6 +3,9 @@ import bodyParser from 'body-parser';
 import dotenv from 'dotenv';
 import middlewareCors from './middleware/cors';
 import apiRouter from './routes';
+import { View } from 'grandjs';
+
+View.settings.set('views', './views');
 
 const app = express();
 dotenv.config();
@@ -14,9 +17,16 @@ connectDB();
 // Aviod cors through middleware
 app.use(middlewareCors.allowAll);
 
-app.use(bodyParser.urlencoded({ extended: false }));
 // Init Middleware
-app.use(express.json());
+app.use(express.json({ limit: '200mb' }));
+app.use(bodyParser.json({ limit: '200mb' }));
+app.use(
+  bodyParser.urlencoded({
+    limit: '200mb',
+    extended: true,
+    parameterLimit: 1000000,
+  })
+);
 app.use('/', apiRouter);
 
 app.get('/', (request, response) => {
