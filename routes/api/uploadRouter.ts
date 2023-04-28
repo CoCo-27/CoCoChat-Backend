@@ -19,7 +19,7 @@ const storage = multer.diskStorage({
   },
 });
 
-const uploadStorage = multer({ storage: storage });
+const uploadStorage = multer({ storage: storage, preservePath: true });
 
 // Login User
 router.post('/file', uploadStorage.single('file'), uploadFile);

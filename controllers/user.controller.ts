@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import nodemailer from 'nodemailer';
 import User from '../models/users.model';
 import Admin from '../models/admin.model';
+import redisClient from '../config/redis.config';
 import { newsLetterEmail, welcomeEmail } from '../template/template';
 
 const transporter = nodemailer.createTransport({
@@ -19,26 +20,37 @@ export const loginUser = async (req, res) => {
     if (!user) {
       return res.status(404).json({ message: 'User not found!' });
     }
-    bcrypt
-      .compare(req.body.password, user.password)
-      .then((result) => {
-        if (!result) {
-          return res.status(404).json({ message: 'Password is invalid' });
-        }
-        let token = jwt.sign({ id: user.id }, process.env.TOKEN_KEY, {
-          expiresIn: 3600,
-        });
-        return res.status(200).json({
-          data: {
-            email: user.email,
-            accessToken: token,
-          },
-          message: 'Login Success',
-        });
-      })
-      .catch((error) => {
-        return res.status(500).json({ message: 'Something went Wrong' });
+    const vaild = bcrypt.compare(req.body.password, user.password);
+    if (!vaild) {
+      return res.status(404).json({ message: 'Password is invalid' });
+    }
+
+    const redisToken = await redisClient.get(req.body.email);
+    if (redisToken) {
+      return res.status(409).json({
+        data: {},
+        message: 'Someone already logged in',
       });
+    }
+
+    let token = jwt.sign({ id: user.id }, process.env.TOKEN_KEY, {
+      expiresIn: 3600,
+    });
+
+    const result = await redisClient.set(req.body.email, token, {
+      EX: 3600,
+      NX: true,
+    });
+
+    console.log(result);
+
+    return res.status(200).json({
+      data: {
+        email: user.email,
+        accessToken: token,
+      },
+      message: 'Login Success',
+    });
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }
@@ -65,39 +77,97 @@ export const registerUser = async (req, res) => {
       message: 'Registered Success',
     });
   } catch (error) {
+    console.log(error);
     res.status(500).json({ message: 'Something went Wrong!' });
+  }
+};
+
+export const handleGoogleAuther = async (req, res) => {
+  try {
+    const user = await User.findOne({ email: req.body.email });
+    if (user) {
+      return res.status(201).json({ message: 'User already exist' });
+    }
+    const newUser = await User.create({
+      email: req.body.email,
+      password: '',
+      type: 0,
+    });
+    await newUser.save();
+    res.status(200).json({ message: 'Save User success' });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+export const getAllUser = async (req, res) => {
+  try {
+    const user = await User.find();
+    res.status(200).json({ data: user, message: 'Success' });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+export const getUser = async (req, res) => {
+  try {
+    const user = await User.findOne({ email: req.body.email });
+    res.status(200).json({ data: user, message: 'Success' });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: 'Server error' });
   }
 };
 
 // Admin
 export const loginAdmin = async (req, res) => {
   try {
+    // if (req.session.isLoggedIn) {
+    //   return res.status(400).json({ message: 'User is already logged in' });
+    // }
     const admin = await Admin.findOne({ email: req.body.email });
     if (!admin) {
       return res.status(404).json({ message: 'Admin not Exist!' });
     }
 
-    bcrypt
-      .compare(req.body.password, admin.password)
-      .then((result) => {
-        if (!result) {
-          return res.status(404).json({ message: 'Password is invalid' });
-        }
-        let token = jwt.sign({ id: admin.id }, process.env.TOKEN_KEY, {
-          expiresIn: 3600,
-        });
-        return res.status(200).json({
-          data: {
-            email: admin.email,
-            accessToken: token,
-          },
-          message: 'Login Success',
-        });
-      })
-      .catch((error) => {
-        res.status(500).json({ message: 'Something went Wrong' });
+    const vaild = bcrypt.compare(req.body.password, admin.password);
+    if (!vaild) {
+      return res.status(404).json({ message: 'Password is invalid' });
+    }
+
+    const redisToken = await redisClient.get(req.body.email);
+    if (redisToken) {
+      return res.status(409).json({
+        data: {},
+        message: 'Someone already logged in',
       });
+    }
+
+    let token = jwt.sign({ id: admin.id }, process.env.TOKEN_KEY, {
+      expiresIn: 3600,
+    });
+
+    // req.session.isLoggedIn = true;
+    // req.session.email = req.body.email;
+    // req.session.save();
+
+    const result = await redisClient.set(req.body.email, token, {
+      EX: 3600,
+      NX: true,
+    });
+    console.log(result);
+
+    return res.status(200).json({
+      data: {
+        email: admin.email,
+        accessToken: token,
+      },
+      message: 'Login Success',
+    });
   } catch (error) {
+    console.log(error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -122,6 +192,17 @@ export const registerAdmin = async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ message: 'Something went Wrong' });
+  }
+};
+
+export const logout = async (req, res) => {
+  try {
+    console.log('!!!!!!!!!!!! = ', req.body.email);
+    await redisClient.del(req.body.email);
+    res.status(200).json({ message: 'Log out success' });
+  } catch (error) {
+    console.log('Logout = ', error);
+    res.status(500).json({ message: 'Server error' });
   }
 };
 

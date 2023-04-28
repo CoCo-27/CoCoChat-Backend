@@ -22,7 +22,10 @@ authToken = (req, res, next) => {
         req.user = user;
         return next();
       })
-      .catch((err) => res.status(500).json({ message: 'Server error' }));
+      .catch((err) => {
+        console.log(err);
+        res.status(500).json({ message: 'Server error' });
+      });
   });
 };
 module.exports = authToken;

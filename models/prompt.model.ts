@@ -2,7 +2,7 @@
 import mongoose from 'mongoose';
 
 const promptSchema = new mongoose.Schema({
-  prompt: String,
+  prompt: [],
 });
 
 const Prompt = mongoose.model('Prompt', promptSchema);

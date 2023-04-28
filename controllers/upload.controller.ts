@@ -4,14 +4,13 @@ import { Document } from 'langchain/document';
 import { RecursiveCharacterTextSplitter } from 'langchain/text_splitter';
 import { OpenAIEmbeddings } from 'langchain/embeddings';
 import { PineconeStore } from 'langchain/vectorstores';
-import { summarizeChain } from '../utils/summarizeChain';
 import dotenv from 'dotenv';
-import { CustomPDFLoader } from '../utils/customPDFLoader';
-import { makeChain } from '../utils/makechain';
 import { loadQAChain } from 'langchain/chains';
 import { PDFLoader } from 'langchain/document_loaders';
 import { DocxLoader } from 'langchain/document_loaders';
+import User from '../models/users.model';
 import Prompt from '../models/prompt.model';
+import ChatHistory from '../models/chatHistory.model';
 dotenv.config();
 
 const basePath = 'uploads/';
@@ -19,7 +18,6 @@ const basePath = 'uploads/';
 function fileLoad(fileName) {
   //Determine file's extension
   const extensionName = fileName.split('.').filter(Boolean).slice(1).join('.');
-  console.log('EXT------------', extensionName);
 
   let loader;
   if (extensionName === 'pdf') {
@@ -34,14 +32,68 @@ function fileLoad(fileName) {
   return loader;
 }
 
+const getValueToString = (value) => {
+  let number = -1;
+  switch (value) {
+    case 'Starter':
+      number = 10;
+      break;
+    case 'Growth':
+      number = 100;
+      break;
+    case 'Business':
+      number = 500;
+      break;
+    case 'Enterprise':
+      number = 0;
+      break;
+    default:
+      break;
+  }
+  return number;
+};
+
+const validate_usage = async (email: string) => {
+  const user = await User.findOne({ email: email });
+  const billingValue = user.billing;
+  const data = {
+    code: 200,
+    message: 'Success',
+  };
+
+  if (billingValue.value !== 0) {
+    if (user.usage_tracking + 1 >= billingValue.value) {
+      const data = {
+        code: 201,
+        message: 'Your chat usage is stopped. Please bill to use it.',
+      };
+      return data;
+    }
+  }
+
+  user.usage_tracking++;
+  await user.save();
+  return data;
+};
+
 export const uploadFile = async (req, res) => {
-  const data = req;
   try {
-    console.log('Upload Controller = ', req.file);
-    res.status(200).send(req.file);
+    const user = await User.findOne({ email: req.body.data });
+    const totalValue = user.billing;
+    if (totalValue.value !== 0) {
+      if (totalValue.value === -1) {
+        return res.json({ code: 201, message: 'Please bill before use.' });
+      } else if (user.usage_tracking >= totalValue.value) {
+        return res.json({
+          code: 202,
+          message: 'Please bill again. Your usage of tracking done',
+        });
+      }
+    }
+    res.json({ code: 200, data: req.file });
   } catch (error) {
     console.log('error = ', error);
-    res.status(404).json({ error });
+    res.status(500).json({ message: 'Server error' });
   }
 };
 
@@ -94,9 +146,9 @@ export const train = async (req, res) => {
 
 export const chatMessage = async (req, res) => {
   try {
-    console.log(req.body);
-    if (!req.body.email) {
-      return res.status(404).json({ message: 'Please log in again' });
+    const value = await validate_usage(req.body.email);
+    if (value.code === 201) {
+      return res.status(value.code).json({ message: value.message });
     }
 
     const pinecone = new PineconeClient();
@@ -123,7 +175,6 @@ export const chatMessage = async (req, res) => {
       temperature: 0,
     });
     const results = await vectorStore.similaritySearch(req.body.value, 5);
-    console.log('results---------', results);
     const chain = loadQAChain(llm, { type: 'stuff' });
 
     const result = chain
@@ -131,7 +182,16 @@ export const chatMessage = async (req, res) => {
         input_documents: results,
         question: req.body.value,
       })
-      .then((row) => {
+      .then(async (row) => {
+        console.log('AI ChatMessage = ', row);
+        const chatHistory = await ChatHistory.create({
+          user_id: req.body.email,
+          human_message: req.body.value,
+          ai_message: row.text,
+          date: new Date(),
+        });
+        console.log('History = ', chatHistory);
+        await chatHistory.save();
         res.json(row);
       });
 
@@ -144,12 +204,18 @@ export const chatMessage = async (req, res) => {
     // console.log('result= ', result);
     // res.status(200).json(result);
   } catch (error) {
+    console.log('message error = ', error);
     res.status(500).json({ message: 'Server error' });
   }
 };
 
 export const summarize = async (req, res) => {
   try {
+    const value = await validate_usage(req.body.email);
+    if (value.code === 201) {
+      return res.status(value.code).json({ message: value.message });
+    }
+
     const client = new PineconeClient();
     await client.init({
       apiKey: process.env.PINECONE_API_KEY,
@@ -161,9 +227,6 @@ export const summarize = async (req, res) => {
       namespace: req.body.email,
     });
 
-    console.log('======================OPEN', process.env.OPENAI_API_KEY);
-    console.log('======================INDEX', process.env.PINECONE_INDEX_NAME);
-    console.log('======================OPEN', process.env.OPENAI_API_KEY);
     const loader = fileLoad(req.body.filename);
 
     const rawDocs = await loader.load();
@@ -200,7 +263,6 @@ export const summarize = async (req, res) => {
       temperature: 0,
     });
     const results = await vectorStore.similaritySearch(req.body.prompt, 5);
-    console.log('results!!!!!!! = ', results);
     const chain = loadQAChain(llm, { type: 'stuff' });
 
     const result = chain
@@ -209,6 +271,8 @@ export const summarize = async (req, res) => {
         question: req.body.prompt,
       })
       .then((row) => {
+        console.log('prompt = ', req.body.prompt);
+        console.log('AI Chat = ', row);
         res.json(row);
       });
   } catch (error) {
@@ -230,20 +294,22 @@ export const summarize = async (req, res) => {
 
 export const customizePrompt = async (req, res) => {
   try {
+    console.log('!!!!!!!!!!!!!!', req.body);
+    const { index, value } = req.body;
     const prompt = await Prompt.find();
-    console.log('Database = ', prompt);
     if (prompt.length === 0) {
       const createPrompt = await Prompt.create({
         prompt: req.body.value,
       });
       await createPrompt.save();
     } else {
-      prompt[0].prompt = req.body.value;
+      prompt[0].prompt[index] = value;
       await prompt[0].save();
     }
+    console.log('Change Prompt123 = ', prompt);
     res
       .status(200)
-      .send({ data: req.body.value, message: 'Prompt Change Success' });
+      .send({ data: prompt[0].prompt, message: 'Prompt Change Success' });
   } catch (error) {
     console.log('Prompt error = ', error);
     res.status(404).send({ message: 'Something Went Wrong' });
@@ -253,7 +319,7 @@ export const customizePrompt = async (req, res) => {
 export const getPrompt = async (req, res) => {
   try {
     const prompt = await Prompt.find();
-    console.log('Database = ', prompt);
+    console.log('GET Prompt = ', prompt);
     res
       .status(200)
       .send({ data: prompt[0].prompt, message: 'Prompt Change Success' });
