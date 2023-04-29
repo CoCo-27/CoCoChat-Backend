@@ -51,6 +51,7 @@ export const payment = async (req, res) => {
         await user.save();
       }
     }
+    res.status(200).json({ message: 'Success' });
   } catch (error) {
     console.log(error);
     res.status(500).json({ message: 'Server error' });
