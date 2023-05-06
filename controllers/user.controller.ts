@@ -4,7 +4,7 @@ import nodemailer from 'nodemailer';
 import User from '../models/users.model';
 import Admin from '../models/admin.model';
 import redisClient from '../config/redis.config';
-import { newsLetterEmail, welcomeEmail } from '../template/template';
+import { newsLetterEmail } from '../template/template';
 
 const transporter = nodemailer.createTransport({
   service: 'gmail',
@@ -42,8 +42,6 @@ export const loginUser = async (req, res) => {
       NX: true,
     });
 
-    console.log(result);
-
     return res.status(200).json({
       data: {
         email: user.email,
@@ -77,7 +75,6 @@ export const registerUser = async (req, res) => {
       message: 'Registered Success',
     });
   } catch (error) {
-    console.log(error);
     res.status(500).json({ message: 'Something went Wrong!' });
   }
 };
@@ -96,7 +93,6 @@ export const handleGoogleAuther = async (req, res) => {
     await newUser.save();
     res.status(200).json({ message: 'Save User success' });
   } catch (error) {
-    console.log(error);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -106,7 +102,6 @@ export const getAllUser = async (req, res) => {
     const user = await User.find();
     res.status(200).json({ data: user, message: 'Success' });
   } catch (error) {
-    console.log(error);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -116,7 +111,6 @@ export const getUser = async (req, res) => {
     const user = await User.findOne({ email: req.body.email });
     res.status(200).json({ data: user, message: 'Success' });
   } catch (error) {
-    console.log(error);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -124,9 +118,6 @@ export const getUser = async (req, res) => {
 // Admin
 export const loginAdmin = async (req, res) => {
   try {
-    // if (req.session.isLoggedIn) {
-    //   return res.status(400).json({ message: 'User is already logged in' });
-    // }
     const admin = await Admin.findOne({ email: req.body.email });
     if (!admin) {
       return res.status(404).json({ message: 'Admin not Exist!' });
@@ -149,15 +140,10 @@ export const loginAdmin = async (req, res) => {
       expiresIn: 3600,
     });
 
-    // req.session.isLoggedIn = true;
-    // req.session.email = req.body.email;
-    // req.session.save();
-
     const result = await redisClient.set(req.body.email, token, {
       EX: 3600,
       NX: true,
     });
-    console.log(result);
 
     return res.status(200).json({
       data: {
@@ -167,7 +153,6 @@ export const loginAdmin = async (req, res) => {
       message: 'Login Success',
     });
   } catch (error) {
-    console.log(error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -197,18 +182,15 @@ export const registerAdmin = async (req, res) => {
 
 export const logout = async (req, res) => {
   try {
-    console.log('!!!!!!!!!!!! = ', req.body.email);
     await redisClient.del(req.body.email);
     res.status(200).json({ message: 'Log out success' });
   } catch (error) {
-    console.log('Logout = ', error);
     res.status(500).json({ message: 'Server error' });
   }
 };
 
 export const forgotPassword = async (req, res) => {
   try {
-    console.log(req.body.email);
     const user = await User.findOne({ email: req.body.email });
     if (!user) {
       return res.status(400).json({ message: 'Email is not correct' });
@@ -217,7 +199,6 @@ export const forgotPassword = async (req, res) => {
       expiresIn: 3600,
     });
 
-    // const output = Newsletter(token);
     let output = newsLetterEmail(token);
 
     user.reset_password_token = token;
@@ -245,7 +226,6 @@ export const forgotPassword = async (req, res) => {
 
 export const resetPassword = async (req, res) => {
   try {
-    console.log(req.body);
     const { token, password } = req.body;
     jwt.verify(token, process.env.TOKEN_KEY, async (err, decoded) => {
       if (err) {
@@ -253,7 +233,6 @@ export const resetPassword = async (req, res) => {
           message: 'Unauthorized!',
         });
       } else {
-        console.log(decoded);
         const user = await User.findOne({ email: decoded.email });
         if (user && token === user.reset_password_token) {
           const encryptedPassword = await bcrypt.hash(password, 10);
@@ -267,7 +246,5 @@ export const resetPassword = async (req, res) => {
         });
       }
     });
-  } catch (error) {
-    console.log(error);
-  }
+  } catch (error) {}
 };

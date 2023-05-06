@@ -78,7 +78,7 @@ const Newsletter = ({ token }) => {
               <img src={item.img} style={Styles.img} />
               <div class="paragraph" style={Styles.paragraph}>
                 This is reset password link which allows you to reset new
-                password to log in ToolBox website successfully
+                password to log in Case Cruncher successfully
               </div>
               <a href="${process.env.FRONTEND_ADDRESS}resetpassword/${token}">
                 ${process.env.FRONTEND_ADDRESS}resetpassword/${token}"

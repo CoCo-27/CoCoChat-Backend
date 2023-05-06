@@ -32,27 +32,6 @@ function fileLoad(fileName) {
   return loader;
 }
 
-const getValueToString = (value) => {
-  let number = -1;
-  switch (value) {
-    case 'Starter':
-      number = 10;
-      break;
-    case 'Growth':
-      number = 100;
-      break;
-    case 'Business':
-      number = 500;
-      break;
-    case 'Enterprise':
-      number = 0;
-      break;
-    default:
-      break;
-  }
-  return number;
-};
-
 const validate_usage = async (email: string) => {
   const user = await User.findOne({ email: email });
   const billingValue = user.billing;
@@ -92,7 +71,6 @@ export const uploadFile = async (req, res) => {
     }
     res.json({ code: 200, data: req.file });
   } catch (error) {
-    console.log('error = ', error);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -139,7 +117,6 @@ export const train = async (req, res) => {
     });
     res.send('File Embedding Success');
   } catch (error) {
-    console.log('error', error);
     res.status(500).send(error);
   }
 };
@@ -173,8 +150,10 @@ export const chatMessage = async (req, res) => {
     const llm = new OpenAI({
       openAIApiKey: process.env.OPENAI_API_KEY,
       temperature: 0,
+      modelName: 'text-davinci-003',
     });
-    const results = await vectorStore.similaritySearch(req.body.value, 5);
+
+    const results = await vectorStore.similaritySearch(req.body.value, 7);
     const chain = loadQAChain(llm, { type: 'stuff' });
 
     const result = chain
@@ -183,35 +162,24 @@ export const chatMessage = async (req, res) => {
         question: req.body.value,
       })
       .then(async (row) => {
-        console.log('AI ChatMessage = ', row);
         const chatHistory = await ChatHistory.create({
           user_id: req.body.email,
           human_message: req.body.value,
           ai_message: row.text,
           date: new Date(),
         });
-        console.log('History = ', chatHistory);
         await chatHistory.save();
         res.json(row);
       });
-
-    // const chain = makeChain(vectorStore);
-
-    // const result = await chain.call({
-    //   question: req.body.value,
-    //   chat_history: [],
-    // });
-    // console.log('result= ', result);
-    // res.status(200).json(result);
   } catch (error) {
-    console.log('message error = ', error);
     res.status(500).json({ message: 'Server error' });
   }
 };
 
 export const summarize = async (req, res) => {
   try {
-    const value = await validate_usage(req.body.email);
+    const { email, fileName, question, prompt } = req.body;
+    const value = await validate_usage(email);
     if (value.code === 201) {
       return res.status(value.code).json({ message: value.message });
     }
@@ -224,10 +192,10 @@ export const summarize = async (req, res) => {
     const pineconeIndex = client.Index(process.env.PINECONE_INDEX_NAME);
     await pineconeIndex.delete1({
       deleteAll: true,
-      namespace: req.body.email,
+      namespace: email,
     });
 
-    const loader = fileLoad(req.body.filename);
+    const loader = fileLoad(fileName);
 
     const rawDocs = await loader.load();
     const textSplitter = new RecursiveCharacterTextSplitter({
@@ -246,7 +214,7 @@ export const summarize = async (req, res) => {
 
     await PineconeStore.fromDocuments(docs, embeddings, {
       pineconeIndex: pineconeIndex,
-      namespace: req.body.email,
+      namespace: email,
     });
 
     const vectorStore = await PineconeStore.fromExistingIndex(
@@ -254,7 +222,7 @@ export const summarize = async (req, res) => {
       {
         pineconeIndex: pineconeIndex,
         textKey: 'text',
-        namespace: req.body.email,
+        namespace: email,
       }
     );
 
@@ -262,39 +230,31 @@ export const summarize = async (req, res) => {
       openAIApiKey: process.env.OPENAI_API_KEY,
       temperature: 0,
     });
-    const results = await vectorStore.similaritySearch(req.body.prompt, 5);
+    const results = await vectorStore.similaritySearch(prompt, 5);
     const chain = loadQAChain(llm, { type: 'stuff' });
 
     const result = chain
       .call({
         input_documents: results,
-        question: req.body.prompt,
+        question: prompt,
       })
-      .then((row) => {
-        console.log('prompt = ', req.body.prompt);
-        console.log('AI Chat = ', row);
+      .then(async (row) => {
+        const chatHistory = await ChatHistory.create({
+          user_id: email,
+          human_message: question,
+          ai_message: row.text,
+          date: new Date(),
+        });
+        await chatHistory.save();
         res.json(row);
       });
   } catch (error) {
-    console.log('Summarize Error = ', error);
     res.status(404).send({ error: error });
   }
-  // try {
-  //   const result = await summarizeChain(
-  //     req.body.email,
-  //     req.body.prompt,
-  //     req.body.filename
-  //   );
-  //   res.status(200).send(result);
-  // } catch (error) {
-  //   console.log('Summarize Error = ', error);
-  //   res.status(404).send({ error: error });
-  // }
 };
 
 export const customizePrompt = async (req, res) => {
   try {
-    console.log('!!!!!!!!!!!!!!', req.body);
     const { index, value } = req.body;
     const prompt = await Prompt.find();
     if (prompt.length === 0) {
@@ -306,12 +266,10 @@ export const customizePrompt = async (req, res) => {
       prompt[0].prompt[index] = value;
       await prompt[0].save();
     }
-    console.log('Change Prompt123 = ', prompt);
     res
       .status(200)
       .send({ data: prompt[0].prompt, message: 'Prompt Change Success' });
   } catch (error) {
-    console.log('Prompt error = ', error);
     res.status(404).send({ message: 'Something Went Wrong' });
   }
 };
@@ -319,12 +277,10 @@ export const customizePrompt = async (req, res) => {
 export const getPrompt = async (req, res) => {
   try {
     const prompt = await Prompt.find();
-    console.log('GET Prompt = ', prompt);
     res
       .status(200)
       .send({ data: prompt[0].prompt, message: 'Prompt Change Success' });
   } catch (error) {
-    console.log('Prompt error = ', error);
     res.status(404).send({ message: 'Something Went Wrong' });
   }
 };

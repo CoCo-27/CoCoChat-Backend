@@ -23,7 +23,6 @@ authToken = (req, res, next) => {
         return next();
       })
       .catch((err) => {
-        console.log(err);
         res.status(500).json({ message: 'Server error' });
       });
   });

@@ -7,19 +7,19 @@ const getStringToAmoumt = (amount) => {
   };
   switch (amount) {
     case 9900:
-      value.string = 'Starter';
+      value.string = 'Legal Lite';
       value.count = 10;
       break;
     case 19900:
-      value.string = 'Growth';
+      value.string = 'Legal Apprentice';
       value.count = 100;
       break;
     case 39900:
-      value.string = 'Business';
+      value.string = 'Legal PRO';
       value.count = 500;
       break;
     case 59900:
-      value.string = 'Enterprise';
+      value.string = 'Legal Master';
       value.count = 0;
       break;
 
@@ -31,11 +31,9 @@ const getStringToAmoumt = (amount) => {
 
 export const payment = async (req, res) => {
   try {
-    console.log('stresssssss', req.body);
     if (req.body.type === 'charge.succeeded') {
       const amount = req.body.data.object.amount;
       const email = req.body.data.object.billing_details.email;
-      console.log('Stripe Email = ', email);
       const user = await User.findOne({ email: email });
       if (!user) {
         return res
@@ -43,8 +41,11 @@ export const payment = async (req, res) => {
           .json({ message: 'Please check your email to bill' });
       } else {
         const billingValue = getStringToAmoumt(amount);
+
         user.billing.value =
-          billingValue.string === 'Enterprise'
+          billingValue.string === 'Legal Master'
+            ? billingValue.count
+            : user.billing.value === -1
             ? billingValue.count
             : user.billing.value + billingValue.count;
         user.billing.state = billingValue.string;
@@ -53,7 +54,6 @@ export const payment = async (req, res) => {
     }
     res.status(200).json({ message: 'Success' });
   } catch (error) {
-    console.log(error);
     res.status(500).json({ message: 'Server error' });
   }
 };
