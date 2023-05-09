@@ -4,7 +4,7 @@ import dotenv from 'dotenv';
 import middlewareCors from './middleware/cors';
 import apiRouter from './routes';
 import cors from 'cors';
-
+//import https from 'https';
 const app = express();
 
 // Initialization
@@ -31,9 +31,9 @@ app.use(
   })
 );
 
-app.use('/', apiRouter);
+app.use('/api/', apiRouter);
 
-app.get('/', (req, res) => {
+app.get('/api', (req, res) => {
   res.json({ message: 'Hello from Case Cruncher Server!' });
 });
 

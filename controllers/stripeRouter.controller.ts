@@ -1,6 +1,7 @@
 import User from '../models/users.model';
 
 const getStringToAmoumt = (amount) => {
+  console.log(amount);
   let value = {
     string: '',
     count: 0,
@@ -31,6 +32,7 @@ const getStringToAmoumt = (amount) => {
 
 export const payment = async (req, res) => {
   try {
+    console.log(req.body);
     if (req.body.type === 'charge.succeeded') {
       const amount = req.body.data.object.amount;
       const email = req.body.data.object.billing_details.email;
